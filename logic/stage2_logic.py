@@ -6,7 +6,10 @@ from logic.base_logic import (
     choose_next_target_common
 )
 from stage2 import adjacent_nodes_stage2
-
+from log_writer import write_log, utc_now
+from settings import BOMB_RADIUS, BOMB_DISTANCE
+W = BOMB_RADIUS * 2
+A = BOMB_DISTANCE
 
 # ----------------------------------------------------------
 # Stage2 adjacency dict 생성 (십자 구조 기반)
@@ -71,6 +74,14 @@ def start_new_round_stage2(state, bomb_positions, stage2_adj, source2):
     round_num = state["round_count"]
     print_round_header(f"🔵 ROUND {round_num} 시작 (Stage 2)")
 
+    state["mouse_locked_inside"] = True   # 🔒 라운드 시작 즉시 잠금
+    state["red_start_time"] = None
+    state["cursor_out_time"] = None
+    state["cursor_out_recorded"] = False
+    state["explode_time"] = None
+    state["click_time"] = None
+
+
     state["pulse_phase"] = 1
     state["pulse_delay"] = 2.0
     state["pulse_count"] = 0
@@ -91,6 +102,20 @@ def start_new_round_stage2(state, bomb_positions, stage2_adj, source2):
 # Stage2 폭발 처리
 # ----------------------------------------------------------
 def explode_stage2(state, node, bomb_positions, stage2_adj, source2):
+    state["explode_time"] = utc_now()
+
+    write_log(
+        state["log_file"],
+        N=4,
+        trial=state["round_count"],
+        W=W,
+        A=A,
+        red_start_time=state.get("red_start_time",""),
+        cursor_out_time=state.get("cursor_out_time",""),
+        explode_time=state["explode_time"],
+        click_time="",       # 실패이므로 빈 칸
+        success=0
+    )
 
     round_num = state["round_count"]
     print_round_header(f"💥 ROUND {round_num} – 폭발 (Stage 2)", node)
@@ -102,6 +127,7 @@ def explode_stage2(state, node, bomb_positions, stage2_adj, source2):
     state["explosion_pos"] = bomb_positions[node]
 
     print(f"   💥 폭발 발생: {node}")
+    state["mouse_locked_inside"] = False
 
     # 중심/타깃 업데이트
     update_next_nodes_stage2(state, bomb_positions, stage2_adj, node, source2)
@@ -109,6 +135,11 @@ def explode_stage2(state, node, bomb_positions, stage2_adj, source2):
     # 라운드 증가
     state["fail_count"] += 1
     state["round_count"] += 1
+
+    #로그 초기화
+    state["cursor_out_time"] = None
+    state["cursor_out_recorded"] = False
+    
     print(f"   ➕ round = {state['round_count']} / MAX = {state['MAX_ROUNDS']}")
 
     # Stage3 전환 조건
@@ -127,6 +158,22 @@ def explode_stage2(state, node, bomb_positions, stage2_adj, source2):
 # Stage2 성공 처리
 # ----------------------------------------------------------
 def handle_defuse_success_stage2(state, bomb_positions, stage2_adj, node, source2):
+    # 클릭 성공 시점 기록
+    state["click_time"] = utc_now()
+
+    # 여기서 로그 한 줄 기록
+    write_log(
+        state["log_file"],
+        N=4,                          # Stage1 → 연결 3개
+        trial=state["round_count"],   # 현재 라운드
+        W=W,
+        A=A,                
+        red_start_time=state.get("red_start_time",""),
+        cursor_out_time=state.get("cursor_out_time",""),
+        explode_time="",              # 성공했으므로 없음
+        click_time=state["click_time"],
+        success=1
+    )
 
     round_num = state["round_count"]
     print_round_header(f"🟢 ROUND {round_num} – 성공 (Stage 2)", node)
@@ -139,6 +186,13 @@ def handle_defuse_success_stage2(state, bomb_positions, stage2_adj, node, source
 
     state["success_count"] += 1
     state["round_count"] += 1
+
+    #로그 초기화
+    state["cursor_out_time"] = None
+    state["cursor_out_recorded"] = False
+
+    state["mouse_locked_inside"] = False
+
     print(f"   ➕ round = {state['round_count']} / MAX = {state['MAX_ROUNDS']}")
 
     # Stage3 전환

@@ -19,8 +19,8 @@ BOMB_DISTANCE = 120   # 원하는 거리(px), 여기만 수정하면 전체 적�
 # 게임 속도
 # -------------------------
 FPS = 60
-# FUSE_SPEED = 14.0
-FUSE_SPEED = 5.0
+FUSE_SPEED = 14.0
+# FUSE_SPEED = 5.0
 
 PULSE_SPEED = 2.0
 PULSE_COUNT_REQUIRED = 3

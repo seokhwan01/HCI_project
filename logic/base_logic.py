@@ -84,6 +84,20 @@ def init_game_state():
         "show_stage_start": False,
         "stage_start_timer": 0.0,
         "stage_start_image": None,
+
+        #마우스 잡아두기
+        "mouse_locked_inside": False,
+
+        # -------------------------
+        # 로그 기록용 (라운드마다 초기화)
+        # -------------------------
+        "red_start_time": None,     # 빨간 폭탄 변한 순간
+        "cursor_out_time": None,    # 마우스가 처음 폭탄 반경을 벗어난 시점
+        "explode_time": None,       # 폭발 발생 시각
+        "click_time": None,         # 성공 클릭 시각
+        "cursor_out_recorded": False,  # 중복 기록 방지
+
+        
     }
 
 # ----------------------------------------------------------

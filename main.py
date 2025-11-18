@@ -1,8 +1,9 @@
 # ==========================================================
 # main.py — FINAL CLEAN VERSION (Stage Start + Transition + End Screens)
 # ==========================================================
+import math
 import pygame, sys
-from settings import WIDTH, HEIGHT, FPS, small_font, pause_font
+from settings import WIDTH, HEIGHT, FPS, small_font, pause_font,BOMB_RADIUS
 from assets import load_assets
 
 # Stage modules
@@ -19,6 +20,8 @@ from logic.stage3_logic import start_new_round_stage3
 # Renderer / Events
 from renderer import render_menu, render_pause, render_game
 from events import handle_events
+
+from log_writer import write_log, utc_now,init_log_file,generate_log_filename
 
 
 # ==========================================================
@@ -124,6 +127,10 @@ while True:
             }
             background_img = assets["stage1_bg"]
 
+            # 🔥 게임 전용 로그 파일 생성
+            state["log_file"] = generate_log_filename()
+            init_log_file(state["log_file"])
+
         if result == "menu":
             state = init_game_state()
             state["state"] = "menu"
@@ -201,27 +208,7 @@ while True:
         continue
 
 
-    # ======================================================
-    # Stage3 종료 → 결과 판단
-    # ======================================================
-    if stage == 3 and state["round_count"] >= state["MAX_ROUNDS"]:
 
-        if not state.get("game_finished"):
-
-            total = state["success_count"] + state["fail_count"]
-            rate = (state["success_count"] / total) if total > 0 else 0
-
-            state["end_image"] = (
-                assets["game_clear"] if rate >= 0.8 else assets["game_over"]
-            )
-
-            state["game_finished"] = True
-
-            state["state"] = "stage_result"
-            state["stage_start_timer"] = 2.0
-            state["stage_start_image"] = state["end_image"]
-
-        continue
 
 
     # ======================================================
@@ -281,6 +268,8 @@ while True:
     # Pulse FSM
     # ------------------------------------------------------
     if state["pulse_phase"] == 1:
+        # 🔒 펄스 시작 → 마우스 잠금 ON
+        state["mouse_locked_inside"] = True
         state["pulse_delay"] -= dt
         if state["pulse_delay"] <= 0:
             state["pulse_phase"] = 2
@@ -306,7 +295,32 @@ while True:
         state["pulse_phase"] = 5
         state["fuse_burning"] = True
         state["segment_progress"] = 0
+        # 🔥 여기에 red_start_time 기록
+        state["red_start_time"] = utc_now()
+        state["mouse_locked_inside"] = False   # 🔒
 
+    # ======================================================
+    # Mouse Clamp (폭탄 중심에 마우스 가두기)
+    # ======================================================
+    if state.get("mouse_locked_inside"):
+        cx, cy = bomb_positions[state["current_source"]]   # 중심 폭탄 위치
+        mx, my = pygame.mouse.get_pos()
+
+        dx = mx - cx
+        dy = my - cy
+        dist = math.hypot(dx, dy)
+
+        # BOMB_RADIUS 기반으로 clamp 반경 계산
+        lock_radius =  BOMB_RADIUS * 0.8 #프레임으로 조금 더 밖으로 나가져서 offset 
+
+        if dist > lock_radius:
+            # 경계선으로 clamp
+            scale = lock_radius / max(dist, 0.001)  
+            new_x = cx + dx * scale
+            new_y = cy + dy * scale
+
+            # 마우스 위치 강제 이동
+            pygame.mouse.set_pos((new_x, new_y))
 
     # ======================================================
     # 게임 화면 렌더링
@@ -371,21 +385,70 @@ while True:
 
     pygame.display.flip()
 
+    # ======================================================
+    # 🔥 cursor_out_time 기록 (마우스 락 풀린 후)
+    # ======================================================
+    if state["fuse_burning"] and not state["mouse_locked_inside"]:
+        # 한 번만 기록되도록
+        if state.get("cursor_out_time") is None:
+
+            cx, cy = bomb_positions[state["current_source"]]
+            mx, my = pygame.mouse.get_pos()
+
+            dx = mx - cx
+            dy = my - cy
+            dist = math.hypot(dx, dy)
+
+            # 폭탄 반경 밖으로 처음 나간 순간
+            if dist > BOMB_RADIUS:
+                state["cursor_out_time"] = utc_now()
+                # print("cursor_out_time 기록됨:", state["cursor_out_time"])
+
+                state["cursor_out_recorded"] = True
+    # ======================================================
+    # Stage3 종료 → 결과 판단 (이펙트 끝날 때까지 대기)
+    # ======================================================
+    if stage == 3 and state["round_count"] >= state["MAX_ROUNDS"]:
+
+        # ① 아직 결과 계산 안 했으면 → 지금 계산만 하고 끝
+        if not state.get("game_finished"):
+
+            total = state["success_count"] + state["fail_count"]
+            rate = (state["success_count"] / total) if total > 0 else 0
+
+            state["end_image"] = (
+                assets["game_clear"] if rate >= 0.8 else assets["game_over"]
+            )
+
+            state["game_finished"] = True
+
+            # 이펙트가 끝날 때까지 기다림
+            continue
+
+        # ② 이펙트 남아있으면 계속 기다림
+        if state["explosion_timer"] > 0 or state["success_timer"] > 0:
+            continue
+
+        # ③ 이제 결과 화면으로 이동
+        state["pending_stage_change"] = False
+        state["state"] = "stage_result"
+        state["stage_start_timer"] = 2.0
+        state["stage_start_image"] = state["end_image"]
+
+        continue
+
+
+
     # ------------------------------------------------------
-    # Stage 전환 대기
+    # Stage 전환 대기 (Stage1→2, Stage2→3)
     # ------------------------------------------------------
     if state.get("pending_stage_change"):
 
-        # Stage3은 다음 스테이지가 없으므로 → 결과 화면으로 바로 이동
+        # Stage3은 아래에서 처리했으므로 실행되면 안 됨
         if stage == 3:
-            if state["explosion_timer"] <= 0 and state["success_timer"] <= 0:
-                state["pending_stage_change"] = False
-                state["state"] = "stage_result"
-                state["stage_start_timer"] = 2.0
-                state["stage_start_image"] = state["end_image"]
             continue
 
-        # Stage1,2 → 정상적으로 다음 스테이지 이동
+        # Stage1,2 → 다음 스테이지 이동
         if state["explosion_timer"] <= 0 and state["success_timer"] <= 0:
             state["pending_stage_change"] = False
             state["waiting_stage_change"] = True
