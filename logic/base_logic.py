@@ -14,18 +14,17 @@ def print_round_header(title, node=None):
 # ----------------------------------------------------------
 # 후보 계산
 # ----------------------------------------------------------
-def get_candidates(node, stage, bomb_positions, stage1_adj):
+def get_candidates(node, stage, bomb_positions, adj_dict):
     if node is None:
         return []
 
-    if stage == 1:
-        adj = stage1_adj.get(node, [])
-    else:
-        adj = list(adjacent_nodes_stage2(node, bomb_positions))
+    # 단순하게 adj_dict 그대로 사용 (stage1, stage2, stage3 모두 처리됨)
+    adj = adj_dict.get(node, [])
 
     clean = [n for n in adj if n != node]
     print(f"   🔍 후보 추출 → 중심 {node} → 후보: {clean}")
     return clean
+
 
 # ----------------------------------------------------------
 # 초기 상태 생성
@@ -35,7 +34,10 @@ def init_game_state():
         "state": "menu",
         "stage": 1,
         "round_count": 0,
-        "MAX_ROUNDS": 10,
+        "MAX_ROUNDS": 2,
+
+        "success_count": 0,   
+        "fail_count": 0,     
 
         # 중심 / 타깃
         "current_source": None,
@@ -72,12 +74,20 @@ def init_game_state():
         # Stage 전환
         "waiting_stage_change": False,
         "stage_transition_timer": 0,
+        "pending_stage_change": False,   # ⭕ 추가됨
 
         "game_message": "",
+
+        # -------------------------
+        # Stage 시작 화면 제어 (⬅ 추가!)
+        # -------------------------
+        "show_stage_start": False,
+        "stage_start_timer": 0.0,
+        "stage_start_image": None,
     }
 
 # ----------------------------------------------------------
-# 펄스 시작 (펄스 효과만)
+# 펄스 시작 (펄스 효과만) 
 # ----------------------------------------------------------
 def start_pulse_common(state, node):
     if state.get("target_node") is None:

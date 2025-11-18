@@ -1,5 +1,5 @@
 # ==========================================================
-# logic/stage2_logic.py — FIXED VERSION (Stage3 전환 포함)
+# logic/stage2_logic.py — ROUND 표시 강화 버전
 # ==========================================================
 from logic.base_logic import (
     print_round_header, get_candidates,
@@ -9,16 +9,27 @@ from stage2 import adjacent_nodes_stage2
 
 
 # ----------------------------------------------------------
-# Stage2 다음 중심/타깃 업데이트
+# Stage2 adjacency dict 생성 (십자 구조 기반)
+# ----------------------------------------------------------
+def build_stage2_adj(bomb_positions):
+    adj = {}
+    for node in bomb_positions:
+        adj[node] = list(adjacent_nodes_stage2(node, bomb_positions))
+    return adj
+
+
+# ----------------------------------------------------------
+# Stage2 중심/타깃 업데이트
 # ----------------------------------------------------------
 def update_next_nodes_stage2(state, bomb_positions, stage2_adj, exploded_node, source2):
 
-    linked = list(adjacent_nodes_stage2(exploded_node, bomb_positions))
+    linked = stage2_adj.get(exploded_node, [])
     print(f"   📎 연결된 폭탄: {linked}")
 
-    # ✔ 연결 4개면 정상 중심
+    # ⭐ Stage2는 연결 4개여야 정상 중심
     if len(linked) == 4:
         print(f"   ✅ 중심 후보 {exploded_node} 연결 4개 → 중심 확정")
+
         state["current_source"] = exploded_node
         state["connected_targets"] = linked
 
@@ -32,12 +43,12 @@ def update_next_nodes_stage2(state, bomb_positions, stage2_adj, exploded_node, s
         print(f"   🎯 다음 타깃 = {state['target_node']}")
         return
 
-    # ❌ 4개 아니면 → (2,2)로 리셋
-    print(f"   ❌ 중심 후보 연결 부족 → 중심을 {source2} 으로 리셋")
+    # ❌ 연결 4개가 아니면 → 기본 중심(source2)으로 리셋
+    print(f"   ❌ 연결 부족 → 중심을 {source2} 으로 리셋")
 
     reset_center = source2
+    linked = stage2_adj.get(reset_center, [])
 
-    linked = list(adjacent_nodes_stage2(reset_center, bomb_positions))
     state["current_source"] = reset_center
     state["connected_targets"] = linked
 
@@ -57,7 +68,8 @@ def update_next_nodes_stage2(state, bomb_positions, stage2_adj, exploded_node, s
 # ----------------------------------------------------------
 def start_new_round_stage2(state, bomb_positions, stage2_adj, source2):
 
-    print_round_header("새 라운드 시작 (Stage 2)")
+    round_num = state["round_count"]
+    print_round_header(f"🔵 ROUND {round_num} 시작 (Stage 2)")
 
     state["pulse_phase"] = 1
     state["pulse_delay"] = 2.0
@@ -76,12 +88,14 @@ def start_new_round_stage2(state, bomb_positions, stage2_adj, source2):
 
 
 # ----------------------------------------------------------
-# Stage2 폭발 처리 (★ Stage3 전환 수정 포함)
+# Stage2 폭발 처리
 # ----------------------------------------------------------
 def explode_stage2(state, node, bomb_positions, stage2_adj, source2):
 
-    print_round_header("EXPLODE 처리 (Stage 2)", node)
+    round_num = state["round_count"]
+    print_round_header(f"💥 ROUND {round_num} – 폭발 (Stage 2)", node)
 
+    # 이펙트
     state["fuse_burning"] = False
     state["segment_progress"] = 0
     state["explosion_timer"] = 0.6
@@ -89,45 +103,54 @@ def explode_stage2(state, node, bomb_positions, stage2_adj, source2):
 
     print(f"   💥 폭발 발생: {node}")
 
+    # 중심/타깃 업데이트
     update_next_nodes_stage2(state, bomb_positions, stage2_adj, node, source2)
 
-    # 🔥 Stage3 전환 검사 (round_count + 1 기준)
-    if state["round_count"] + 1 > state["MAX_ROUNDS"]:
+    # 라운드 증가
+    state["fail_count"] += 1
+    state["round_count"] += 1
+    print(f"   ➕ round = {state['round_count']} / MAX = {state['MAX_ROUNDS']}")
+
+    # Stage3 전환 조건
+    if state["round_count"] >= state["MAX_ROUNDS"]:
         print("   🚀 Stage 3 전환 준비...")
-        state["waiting_stage_change"] = True
-        state["stage_transition_timer"] = 2.0  # 2초 후 전환
+        state["pending_stage_change"] = True
         return
 
-    # 정상 라운드 증가
-    state["round_count"] += 1
-
+    # 다음 라운드 pulse 재시작
     state["pulse_phase"] = 1
     state["pulse_delay"] = 2.0
     state["pulse_count"] = 0
 
 
 # ----------------------------------------------------------
-# Stage2 해제 성공 처리 (★ 동일하게 Stage3 전환 검사 포함)
+# Stage2 성공 처리
 # ----------------------------------------------------------
 def handle_defuse_success_stage2(state, bomb_positions, stage2_adj, node, source2):
 
-    print_round_header("DEFUSE SUCCESS (Stage 2)", node)
+    round_num = state["round_count"]
+    print_round_header(f"🟢 ROUND {round_num} – 성공 (Stage 2)", node)
 
+    # 이펙트
     state["fuse_burning"] = False
     state["segment_progress"] = 0
-    state["explosion_timer"] = 0
+    state["success_timer"] = 0.6
+    state["success_pos"] = bomb_positions[node]
 
-    # 🔥 Stage3 전환 검사
-    if state["round_count"] + 1 > state["MAX_ROUNDS"]:
+    state["success_count"] += 1
+    state["round_count"] += 1
+    print(f"   ➕ round = {state['round_count']} / MAX = {state['MAX_ROUNDS']}")
+
+    # Stage3 전환
+    if state["round_count"] >= state["MAX_ROUNDS"]:
         print("   🚀 Stage 3 전환 준비...")
-        state["waiting_stage_change"] = True
-        state["stage_transition_timer"] = 0.01
+        state["pending_stage_change"] = True
         return
 
-    state["round_count"] += 1
-
+    # 중심/타깃 갱신
     update_next_nodes_stage2(state, bomb_positions, stage2_adj, node, source2)
 
+    # 다음 pulse
     state["pulse_phase"] = 1
     state["pulse_delay"] = 2.0
     state["pulse_count"] = 0

@@ -1,19 +1,49 @@
-from settings import WIDTH, HEIGHT
+# ==========================================================
+# stage2.py — Stage2 전용: 5×5 격자 + 십자형(4방향) 연결
+# ==========================================================
 
-def generate_stage2_positions(spacing=160):
-    positions = {}
+from settings import WIDTH, HEIGHT, BOMB_DISTANCE
+
+
+# ----------------------------------------------------------
+# 5×5 정중앙 격자 배치 생성
+# ----------------------------------------------------------
+def generate_stage2_positions():
+
+    spacing = BOMB_DISTANCE
     rows, cols = 5, 5
-    origin_x = WIDTH//2 - spacing*2
-    origin_y = HEIGHT//2 - spacing*2
+
+    # 화면 정중앙을 기준으로 (2,2)가 중심이 되도록 배치
+    origin_x = WIDTH // 2 - spacing * 2
+    origin_y = HEIGHT // 2 - spacing * 2
+
+    positions = {}
 
     for r in range(rows):
         for c in range(cols):
-            positions[(r,c)] = (origin_x + c*spacing, origin_y + r*spacing)
+            x = origin_x + c * spacing
+            y = origin_y + r * spacing
+            positions[(r, c)] = (x, y)
+
     return positions
 
-def adjacent_nodes_stage2(node, bomb_positions): 
+
+# ----------------------------------------------------------
+# ✨ Stage2 핵심: 오직 4방향(상하좌우)만 adjacency 허용
+# ----------------------------------------------------------
+def adjacent_nodes_stage2(node, bomb_positions):
+
     r, c = node
-    for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
-        new = (r+dr, c+dc)
-        if new in bomb_positions:
-            yield new
+
+    # 상하좌우 4개 방향만 사용
+    cross_offsets = [
+        (-1, 0),  # 위
+        (1, 0),   # 아래
+        (0, -1),  # 왼쪽
+        (0, 1),   # 오른쪽
+    ]
+
+    for dr, dc in cross_offsets:
+        nxt = (r + dr, c + dc)
+        if nxt in bomb_positions:
+            yield nxt

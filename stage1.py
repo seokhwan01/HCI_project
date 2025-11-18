@@ -1,76 +1,63 @@
+# ==========================================================
+# stage1.py — adjacency 유지 + 도화선 거리 정확히 spacing
+# ==========================================================
+from settings import BOMB_DISTANCE
 import math
 
-# === Stage1 폭탄 구조 ===
-layout = [
-    [0,0,1,0,1,0,0],
-    [1,0,1,0,1,0,1],
-    [0,1,0,1,0,1,0],
-    [0,1,0,1,0,1,0],
-    [1,0,1,0,1,0,1],
-    [0,0,1,0,1,0,0]
-]
+stage1_connections = []
+_stage1_adj = {}
 
-ROWS = len(layout)
-COLS = len(layout[0])
-SPACING = 140
-OFFSET_X = 40
-OFFSET_Y = 30
 
-# === Stage1 도화선 연결 ===
-stage1_connections = [
-    # 상단부
-    ((0,2),(1,2)), ((0,4),(1,4)),
-
-    # 중간부
-    ((1,0),(2,1)), ((1,2),(2,1)), ((1,2),(2,3)),
-    ((1,4),(2,3)), ((1,4),(2,5)), ((1,6),(2,5)),
-
-    ((2,1),(3,1)), ((2,3),(3,3)), ((2,5),(3,5)),
-
-    ((3,1),(4,0)), ((3,1),(4,2)),
-    ((3,3),(4,2)), ((3,3),(4,4)),
-    ((3,5),(4,4)), ((3,5),(4,6)),
-
-    # 하단부
-    ((4,2),(5,2)), ((4,4),(5,4)),
-]
-
-# ----------------------------------------------------------
-# 폭탄 좌표 생성
-# ----------------------------------------------------------
 def generate_stage1_positions(WIDTH, HEIGHT):
+    global stage1_connections, _stage1_adj
+
     positions = {}
+    spacing = BOMB_DISTANCE  # 140
+    rows = 5
+    cols = 5
 
-    H_SPACING = SPACING
-    V_SPACING = SPACING * math.sqrt(3) / 2  # 육각형 세로 거리
+    # 정삼각형 기반 spacing
+    dx = spacing * math.sqrt(3) / 2   # 121.24 px
+    dy = spacing / 2                  # 70 px
 
-    max_col_offset = (COLS - 1) * (H_SPACING * 0.5)
-    pattern_width = max_col_offset + H_SPACING
-    pattern_height = (ROWS - 1) * V_SPACING + H_SPACING * 0.5
+    start_x = WIDTH // 2
+    start_y = HEIGHT // 2
 
-    start_x = WIDTH / 2 - pattern_width / 2 + OFFSET_X
-    start_y = HEIGHT / 2 - pattern_height / 2 + OFFSET_Y
+    for c in range(cols):
+        for r in range(rows):
 
-    for r in range(ROWS):
-        for c in range(COLS):
-            if layout[r][c] == 1:
-                x = start_x + c * (H_SPACING * 0.5)
-                y = start_y + r * V_SPACING
-                positions[(r, c)] = (x, y)
+            # 시각적 형태는 유지되지만 대각선 길이를 맞춘 형태
+            x = start_x + (c - cols//2) * dx
+            y = start_y + (r - rows//2) * spacing + (c % 2) * dy
+
+            positions[(r, c)] = (x, y)
+
+    # === adjacency (너의 원래 로직 그대로) ===
+    adj = {node: [] for node in positions}
+
+    for (r, c) in positions:
+
+        if c % 2 == 0:
+            dirs = [(-1, 0), (0, -1), (0, 1)]
+        else:
+            dirs = [(-1, 0), (1, -1), (1, 1)]
+
+        for dr, dc in dirs:
+            nb = (r + dr, c + dc)
+            if nb in positions:
+                adj[(r, c)].append(nb)
+
+    _stage1_adj = adj
+
+    stage1_connections = []
+    for a in adj:
+        for b in adj[a]:
+            if (b, a) not in stage1_connections:
+                stage1_connections.append((a, b))
 
     return positions
 
 
-# ----------------------------------------------------------
-# adjacency 생성 (자기 자신 연결 제거)
-# ----------------------------------------------------------
+
 def adjacent_nodes_stage1(node, bomb_positions):
-    """현재 폭탄 기준으로 stage1_connections을 따라 연결된 인접 노드 반환"""
-    from stage1 import stage1_connections  # 내부 import (순환 참조 방지)
-    r_list = []
-    for a, b in stage1_connections:
-        if a == node and b in bomb_positions:
-            r_list.append(b)
-        elif b == node and a in bomb_positions:
-            r_list.append(a)
-    return r_list
+    return _stage1_adj.get(node, [])

@@ -15,7 +15,13 @@ def safe_hit(rect, pos):
 
 def handle_events(e, state, stage, bomb_positions,
                   start_rect, resume_btn, menu_btn, quit_btn,
-                  source1, source2, stage1_adj):
+                  source1, source2, source3, stage1_adj,
+                  stage2_adj=None, stage3_adj=None):
+
+    """
+    🔥 수정된 부분:
+    stage2_adj, stage3_adj 를 추가로 받아서 올바른 adjacency 전달 가능하게 함.
+    """
 
     # -----------------------------------------
     # 🔚 창 종료
@@ -50,9 +56,8 @@ def handle_events(e, state, stage, bomb_positions,
                 pygame.event.set_grab(True)
                 pygame.mouse.set_visible(True)
 
-            return "start_game"   # ★ ONLY 안쪽에서 반환
+            return "start_game"
         return None
-
 
     # -----------------------------------------
     # ⏸ PAUSE 화면
@@ -80,7 +85,7 @@ def handle_events(e, state, stage, bomb_positions,
     # -----------------------------------------
     if state["state"] == "game" and e.type == pygame.MOUSEBUTTONDOWN:
 
-        # 게임 중엔 항상 마우스를 고정 유지 ★
+        # 게임 중엔 항상 마우스를 고정 유지
         pygame.event.set_grab(True)
         pygame.mouse.set_visible(True)
 
@@ -91,25 +96,36 @@ def handle_events(e, state, stage, bomb_positions,
 
             if math.hypot(mx - tx, my - ty) <= 35:
 
+                # -------------------------
+                # Stage 1 성공 처리
+                # -------------------------
                 if stage == 1:
                     handle_defuse_success_stage1(
                         state, bomb_positions, stage1_adj,
                         state["target_node"], source1
                     )
 
+                # -------------------------
+                # Stage 2 성공 처리 (⭕ FIX: stage2_adj 전달)
+                # -------------------------
                 elif stage == 2:
                     handle_defuse_success_stage2(
-                        state, bomb_positions, stage1_adj,
+                        state, bomb_positions, stage2_adj,
                         state["target_node"], source2
                     )
 
+                # -------------------------
+                # Stage 3 성공 처리 (⭕ FIX: stage3_adj 전달)
+                # -------------------------
                 elif stage == 3:
                     handle_defuse_success_stage3(
-                        state, bomb_positions, stage1_adj,  # stage3_adj는 render_game으로만 필요
-                        state["target_node"]
+                        state, bomb_positions, stage3_adj,
+                        state["target_node"], source3
                     )
 
+
+            # 클릭 범위 밖이면 무시
             else:
-                state["game_message"] = "❌ 잘못된 폭탄 클릭!"
+                pass
 
     return None
