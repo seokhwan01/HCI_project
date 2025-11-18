@@ -17,8 +17,8 @@ def draw_fuse(surface, a_pos, b_pos, progress=None, active=False):
     sx, sy = a_pos
     ex, ey = b_pos
 
-    # 1) 기본 도화선 (갈색)
-    pygame.draw.line(surface, (130, 90, 50), (sx, sy), (ex, ey), 8)
+    # 1) 기본 도화선 (회색)
+    pygame.draw.line(surface, (200, 200, 200), (sx, sy), (ex, ey), 8)
 
     # progress 없으면 점화 애니메이션 없음
     if progress is None:
