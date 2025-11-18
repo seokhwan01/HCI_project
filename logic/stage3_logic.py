@@ -84,6 +84,7 @@ def start_new_round_stage3(state, bomb_positions, stage3_adj, source3):
     state["cursor_out_recorded"] = False
     state["explode_time"] = None
     state["click_time"] = None
+    state["logged_after_explosion"] = False
 
 
 
@@ -110,50 +111,47 @@ def start_new_round_stage3(state, bomb_positions, stage3_adj, source3):
 # Stage3 폭발
 # ----------------------------------------------------------
 def explode_stage3(state, node, bomb_positions, stage3_adj, source3):
-    state["explode_time"] = utc_now()
 
-    write_log(
-        state["log_file"],
-        N=6,
-        trial=state["round_count"],
-        W=W,
-        A=A,
-        red_start_time=state.get("red_start_time",""),
-        cursor_out_time=state.get("cursor_out_time",""),
-        explode_time=state["explode_time"],
-        click_time="",       # 실패이므로 빈 칸
-        success=0
-    )
+    # 🔥 현재 라운드 번호 백업 (late-click 용)
+    state["trial_at_explosion"] = state["round_count"]
+
+    # 🔥 폭발 시간 기록
+    state["explode_time"] = utc_now()
 
     print_round_header("EXPLODE 처리 (Stage 3)", node)
 
+    # 이펙트
     state["fuse_burning"] = False
     state["segment_progress"] = 0
     state["explosion_timer"] = 0.6
     state["explosion_pos"] = bomb_positions[node]
 
-    print(f"   💥 폭발 발생: {node}")
     state["mouse_locked_inside"] = False
 
+    # 중심/타깃 갱신
     update_next_nodes_stage3(state, bomb_positions, stage3_adj, node, source3)
 
     if state["target_node"] is None:
         state["target_node"] = state["current_source"]
 
+    # 라운드 증가
     state["fail_count"] += 1
     state["round_count"] += 1
 
-    #로그 초기화
-    state["cursor_out_time"] = None
+    # ⭐⭐⭐ 반드시 초기화해야 late-click이 기록됨!
+    state["click_time"] = None
     state["cursor_out_recorded"] = False
+    state["logged_after_explosion"] = False
 
     print(f"   ➕ round = {state['round_count']} / MAX = {state['MAX_ROUNDS']}")
 
+    # 종료 조건
     if state["round_count"] >= state["MAX_ROUNDS"]:
         print("   🚀 Stage 종료 준비...")
         state["pending_stage_change"] = True
         return
 
+    # 다음 라운드 준비
     state["pulse_phase"] = 1
     state["pulse_delay"] = 2.0
     state["pulse_count"] = 0

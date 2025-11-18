@@ -96,6 +96,7 @@ def init_game_state():
         "explode_time": None,       # 폭발 발생 시각
         "click_time": None,         # 성공 클릭 시각
         "cursor_out_recorded": False,  # 중복 기록 방지
+        "logged_after_explosion": False
 
         
     }

@@ -22,6 +22,9 @@ from renderer import render_menu, render_pause, render_game
 from events import handle_events
 
 from log_writer import write_log, utc_now,init_log_file,generate_log_filename
+from settings import BOMB_RADIUS, BOMB_DISTANCE
+W = BOMB_RADIUS * 2
+A = BOMB_DISTANCE
 
 
 # ==========================================================
@@ -32,6 +35,11 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 pygame.display.set_caption("💣 폭탄 제거반 EOD")
 
+STAGE_N = {
+    1: 3,   # Stage 1 = hex → 연결 3개
+    2: 4,   # Stage 2 = 십자 → 연결 4개
+    3: 6    # Stage 3 = 원형 → 연결 6개
+}
 
 # ==========================================================
 # Load ALL assets
@@ -135,6 +143,23 @@ while True:
             state = init_game_state()
             state["state"] = "menu"
             continue
+
+        # --------------------------------------------
+        # 🔥🔥 폭발 후 이펙트 중 late-click 기록
+        # --------------------------------------------
+        if state.get("explosion_timer", 0) > 0:
+            if e.type == pygame.MOUSEBUTTONDOWN:
+
+                # 폭탄 중심
+                x, y = bomb_positions[state["current_source"]]
+
+                # 폭탄 있던 자리 hitbox 클릭인지 체크
+                if (x - BOMB_RADIUS <= e.pos[0] <= x + BOMB_RADIUS) and \
+                (y - BOMB_RADIUS <= e.pos[1] <= y + BOMB_RADIUS):
+
+                    # 클릭 기록 (중복 방지)
+                    if state.get("click_time") in (None, ""):
+                        state["click_time"] = utc_now()
 
 
     # ------------------------------------------------------
@@ -311,7 +336,7 @@ while True:
         dist = math.hypot(dx, dy)
 
         # BOMB_RADIUS 기반으로 clamp 반경 계산
-        lock_radius =  BOMB_RADIUS * 0.8 #프레임으로 조금 더 밖으로 나가져서 offset 
+        lock_radius =  BOMB_RADIUS * 0.6 #프레임으로 조금 더 밖으로 나가져서 offset 
 
         if dist > lock_radius:
             # 경계선으로 clamp
@@ -388,7 +413,7 @@ while True:
     # ======================================================
     # 🔥 cursor_out_time 기록 (마우스 락 풀린 후)
     # ======================================================
-    if state["fuse_burning"] and not state["mouse_locked_inside"]:
+    if state["fuse_burning"]:
         # 한 번만 기록되도록
         if state.get("cursor_out_time") is None:
 
@@ -405,6 +430,36 @@ while True:
                 # print("cursor_out_time 기록됨:", state["cursor_out_time"])
 
                 state["cursor_out_recorded"] = True
+                print("커서가 밖에 나감 확인")
+    # ======================================================
+    # 🔥 폭발 후 이펙트 끝 → 이제 기록해도 되는 시점
+    # ======================================================
+    if state.get("explode_time") and not state.get("logged_after_explosion"):
+
+        # explosion effect 끝났는지 확인
+        if state.get("explosion_timer", 0) <= 0:
+            N_value = STAGE_N.get(stage, 3)   # stage 1→3 등 자동 매핑
+            trial_value = state.get("trial_at_explosion", state["round_count"])
+            write_log(
+                state["log_file"],
+                N=N_value,
+                trial=trial_value,
+                W=W,
+                A=A,
+                red_start_time=state.get("red_start_time",""),
+                cursor_out_time=state.get("cursor_out_time",""),
+                explode_time=state.get("explode_time",""),
+                click_time=state.get("click_time",""),
+                success=0
+            )
+
+            # 🔥 이번 폭발에 대한 실패 로그는 찍었으니까
+            # 다음 라운드를 위해 값들 리셋
+            state["logged_after_explosion"] = True
+            state["cursor_out_time"] = None       # ★ 이 줄이 핵심
+            state["cursor_out_recorded"] = False
+            state["explode_time"] = None          # 다음 폭발 구분용(선택)
+
     # ======================================================
     # Stage3 종료 → 결과 판단 (이펙트 끝날 때까지 대기)
     # ======================================================

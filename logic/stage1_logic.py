@@ -72,6 +72,8 @@ def start_new_round_stage1(state, bomb_positions, stage1_adj, source1):
     state["cursor_out_recorded"] = False
     state["explode_time"] = None
     state["click_time"] = None
+    state["logged_after_explosion"] = False
+
 
 
     # 펄스 초기화
@@ -96,63 +98,37 @@ def start_new_round_stage1(state, bomb_positions, stage1_adj, source1):
     print(f"   🎯 타깃 = {state['target_node']}")
 
 
-# ----------------------------------------------------------
-# Stage1 폭발 처리 (완전 수정)
-# ----------------------------------------------------------
 def explode_stage1(state, node, bomb_positions, stage1_adj, source1):
-
+    state["trial_at_explosion"] = state["round_count"]
     state["explode_time"] = utc_now()
-
-    write_log(
-        state["log_file"],
-        N=3,
-        trial=state["round_count"],
-        W=W,
-        A=A,
-        red_start_time=state.get("red_start_time",""),
-        cursor_out_time=state.get("cursor_out_time",""),
-        explode_time=state["explode_time"],
-        click_time="",       # 실패이므로 빈 칸
-        success=0
-    )
 
     print_round_header("EXPLODE 처리 (Stage 1)", node)
 
-    # 1) 이펙트 먼저
     state["fuse_burning"] = False
     state["segment_progress"] = 0
     state["explosion_timer"] = 0.6
     state["explosion_pos"] = bomb_positions[node]
-
-    print(f"   💥 폭발 발생: {node}")
     state["mouse_locked_inside"] = False
 
-    # 2) 중심/타깃 업데이트
     update_next_nodes_stage1(state, bomb_positions, stage1_adj, node, source1)
-
-    # 3) 타깃 유효성 보정
     if state["target_node"] is None:
-        print("   ⚠ target_node None → 자기 자신으로 보정")
         state["target_node"] = state["current_source"]
 
-    # 4) 라운드 증가
+    # 라운드 증가
     state["fail_count"] += 1
     state["round_count"] += 1
 
-    #로그 초기화
-    # 여기 추가!
-    state["cursor_out_time"] = None
+    # ⭐⭐⭐ 반드시 초기화해야 함 ⭐⭐⭐
+    state["click_time"] = None
     state["cursor_out_recorded"] = False
+    state["logged_after_explosion"] = False
 
     print(f"   ➕ round = {state['round_count']} / MAX = {state['MAX_ROUNDS']}")
 
-    # 5) 전환 검사
     if state["round_count"] >= state["MAX_ROUNDS"]:
-        print("   🚀 Stage 2 전환 준비...")
         state["pending_stage_change"] = True
         return
 
-    # 6) 다음 라운드 준비
     state["pulse_phase"] = 1
     state["pulse_delay"] = 2.0
     state["pulse_count"] = 0
