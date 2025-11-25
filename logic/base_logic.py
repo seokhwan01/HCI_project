@@ -2,7 +2,7 @@
 import random
 from stage1 import adjacent_nodes_stage1
 from stage2 import adjacent_nodes_stage2
-
+from settings import MAX_ROUNDS
 # ----------------------------------------------------------
 # 디버그 출력
 # ----------------------------------------------------------
@@ -34,7 +34,7 @@ def init_game_state():
         "state": "menu",
         "stage": 1,
         "round_count": 0,
-        "MAX_ROUNDS": 2,
+        "MAX_ROUNDS": MAX_ROUNDS,
 
         "success_count": 0,   
         "fail_count": 0,     

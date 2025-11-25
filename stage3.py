@@ -1,7 +1,7 @@
 # ==========================================================
 # stage3.py — Stage1과 동일한 거리, Odd-r Hex 6방향 연결
 # ==========================================================
-from settings import BOMB_DISTANCE
+from settings import BOMB_DISTANCE,BOMB_RADIUS
 import math
 
 _stage3_adj = {}
@@ -31,8 +31,10 @@ def generate_stage3_positions(width, height):
     global _stage3_adj, stage3_connections
 
     positions = {}
-    spacing = BOMB_DISTANCE
-    rows, cols = 5, 5
+    A = BOMB_DISTANCE  # 네가 설정한 실험용 A
+    center_distance = A + (2 * BOMB_RADIUS)
+    spacing = center_distance
+    rows, cols = 4, 5
 
     dx = spacing * math.sqrt(3) / 2   # 121.24
     dy = spacing / 2                  # 70

@@ -12,16 +12,22 @@ HEIGHT = 800
 # -------------------------
 # 폭탄 기본 크기 설정
 # -------------------------
-BOMB_RADIUS = 30
-BOMB_DISTANCE = 120   # 원하는 거리(px), 여기만 수정하면 전체 적용됨
+BOMB_RADIUS = 40
+BOMB_DISTANCE = 150  # 원하는 거리(px), 여기만 수정하면 전체 적용됨
+
+#w최소 50
+
+#라운드 갯수 
+MAX_ROUNDS=10
 
 # -------------------------
 # 게임 속도
 # -------------------------
 FPS = 60
-FUSE_SPEED = 14.0
-# FUSE_SPEED = 5.0
+# FUSE_SPEED_100 = 12.0
+# FUSE_SPEED_150 = 18.0
 
+TARGET_EXPLODE_TIME=0.6
 PULSE_SPEED = 2.0
 PULSE_COUNT_REQUIRED = 3
 

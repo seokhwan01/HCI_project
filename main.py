@@ -294,7 +294,7 @@ while True:
     # ------------------------------------------------------
     if state["pulse_phase"] == 1:
         # 🔒 펄스 시작 → 마우스 잠금 ON
-        state["mouse_locked_inside"] = True
+        
         state["pulse_delay"] -= dt
         if state["pulse_delay"] <= 0:
             state["pulse_phase"] = 2
@@ -303,6 +303,7 @@ while True:
             state["pulse_target"] = state["current_source"]
 
     elif state["pulse_phase"] == 2:
+        state["mouse_locked_inside"] = True #위치 변경
         state["pulse_timer"] += dt
         if state["pulse_timer"] >= state["pulse_duration"]:
             state["pulse_phase"] = 3

@@ -1,7 +1,7 @@
 # ==========================================================
 # stage1.py — adjacency 유지 + 도화선 거리 정확히 spacing
 # ==========================================================
-from settings import BOMB_DISTANCE
+from settings import BOMB_DISTANCE,BOMB_RADIUS
 import math
 
 stage1_connections = []
@@ -12,8 +12,11 @@ def generate_stage1_positions(WIDTH, HEIGHT):
     global stage1_connections, _stage1_adj
 
     positions = {}
-    spacing = BOMB_DISTANCE  # 140
-    rows = 5
+    # spacing = BOMB_DISTANCE  # 140
+    A = BOMB_DISTANCE  # 네가 설정한 실험용 A
+    center_distance = A + (2 * BOMB_RADIUS)
+    spacing = center_distance
+    rows = 4
     cols = 5
 
     # 정삼각형 기반 spacing

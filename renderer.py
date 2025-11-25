@@ -2,7 +2,7 @@ import pygame
 import math
 from fuse import draw_fuse
 from particles import update_particles
-from settings import FUSE_SPEED, PULSE_SPEED
+from settings import PULSE_SPEED, BOMB_DISTANCE,TARGET_EXPLODE_TIME
 from logic.stage1_logic import explode_stage1
 from logic.stage2_logic import explode_stage2
 from logic.stage3_logic import explode_stage3
@@ -112,38 +112,65 @@ def render_game(screen, background_img, stage, bomb_positions,
     # ---------------------------
     # 2) Pulse 애니메이션
     # ---------------------------
-    if state["pulsing"]:
-        p = state["pulse_target"]
-        if p in bomb_positions:
-            state["pulse_timer"] += dt * PULSE_SPEED
-            px, py = bomb_positions[p]
-            scale = 1 + 0.4 * math.sin(state["pulse_timer"])
-            img = pygame.transform.scale(black_bomb, (int(60 * scale), int(60 * scale)))
-            screen.blit(img, img.get_rect(center=(px, py)))
+    # if state["pulsing"]:
+    #     p = state["pulse_target"]
+    #     if p in bomb_positions:
+    #         state["pulse_timer"] += dt * PULSE_SPEED
+    #         px, py = bomb_positions[p]
+    #         scale = 1 + 0.4 * math.sin(state["pulse_timer"])
+    #         img = pygame.transform.scale(black_bomb, (int(60*1.3 * scale), int(60*1.3 * scale)))
+    #         screen.blit(img, img.get_rect(center=(px, py)))
 
     # ---------------------------
     # 3) Fuse Burning → 폭발
     # ---------------------------
+    # 3) Fuse Burning → 폭발
     if state["fuse_burning"] and state["target_node"] in bomb_positions:
 
         src = bomb_positions[state["current_source"]]
         dst = bomb_positions[state["target_node"]]
 
         draw_fuse(screen, src, dst, progress=state["segment_progress"], active=True)
-        state["segment_progress"] += dt * (FUSE_SPEED * 0.15)
+
+        # 🔥 거리와 상관없이 항상 TARGET_EXPLODE_TIME만큼 걸리게
+        state["segment_progress"] += dt * (1.0 / TARGET_EXPLODE_TIME)
 
         if state["segment_progress"] >= 1:
-
             node = state["target_node"]
 
             if stage == 1:
                 explode_stage1(state, node, bomb_positions, adj, center_node)
-
             elif stage == 2:
                 explode_stage2(state, node, bomb_positions, adj, center_node)
-
             else:
                 explode_stage3(state, node, bomb_positions, adj, center_node)
+
+    # if state["fuse_burning"] and state["target_node"] in bomb_positions:
+
+    #     src = bomb_positions[state["current_source"]]
+    #     dst = bomb_positions[state["target_node"]]
+
+    #     draw_fuse(screen, src, dst, progress=state["segment_progress"], active=True)
+        
+    #     #setting에서 W if문
+    #     if BOMB_DISTANCE==150:
+    #         state["segment_progress"] += dt * (FUSE_SPEED_150* 0.15)
+    #     elif BOMB_DISTANCE==100:
+    #         state["segment_progress"] += dt * (FUSE_SPEED_100 * 0.15)
+        
+
+    #     if state["segment_progress"] >= 1:
+
+    #         node = state["target_node"]
+
+    #         if stage == 1:
+    #             explode_stage1(state, node, bomb_positions, adj, center_node)
+
+    #         elif stage == 2:
+    #             explode_stage2(state, node, bomb_positions, adj, center_node)
+
+    #         else:
+    #             explode_stage3(state, node, bomb_positions, adj, center_node)
 
     # ---------------------------
     # 4) 폭탄 렌더링
