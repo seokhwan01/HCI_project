@@ -1,5 +1,5 @@
 # ==========================================================
-# logic/stage3_logic.py — Stage1 6-way Hex Version
+# logic/stage3_logic.py — FINAL VERSION (6-way Hex)
 # ==========================================================
 from logic.base_logic import (
     print_round_header, get_candidates,
@@ -7,9 +7,18 @@ from logic.base_logic import (
 )
 from stage3 import adjacent_nodes_stage3
 from log_writer import write_log, utc_now
-from settings import BOMB_RADIUS, BOMB_DISTANCE
-W = BOMB_RADIUS * 2
-A = BOMB_DISTANCE
+import settings   # 🔥 settings에서 실시간 W/A 가져오기
+
+
+# ----------------------------------------------------------
+# 항상 최신 W, A 가져오는 함수
+# ----------------------------------------------------------
+def get_W():
+    return settings.BOMB_RADIUS * 2
+
+def get_A():
+    return settings.BOMB_DISTANCE
+
 
 # ----------------------------------------------------------
 # Stage3 adjacency dict 생성 (6방향 hex)
@@ -22,7 +31,7 @@ def build_stage3_adj(bomb_positions):
 
 
 # ----------------------------------------------------------
-# 중심/타깃 업데이트 (연결 6개일 때만 정상 중심)
+# 중심/타깃 업데이트 (연결 6개면 정상 중심)
 # ----------------------------------------------------------
 def update_next_nodes_stage3(state, bomb_positions, stage3_adj, exploded_node, source3):
 
@@ -33,16 +42,18 @@ def update_next_nodes_stage3(state, bomb_positions, stage3_adj, exploded_node, s
     if len(linked) == 6:
         print(f"   ✅ 중심 후보 {exploded_node} → 중심 확정")
         state["current_source"] = exploded_node
+        state["connected_targets"] = linked
 
         cand = get_candidates(exploded_node, 3, bomb_positions, stage3_adj)
+
         if cand:
             state["target_node"] = choose_next_target_common(
-                exploded_node, 3, bomb_positions, stage3_adj, cand)
+                exploded_node, 3, bomb_positions, stage3_adj, cand
+            )
         else:
-            print("   ⚠ 타깃 없음 → 자기 자신 설정")
+            print("   ⚠ 타깃 없음 → 자기 자신")
             state["target_node"] = exploded_node
 
-        state["connected_targets"] = linked
         print(f"   🎯 타깃 = {state['target_node']}")
         return
 
@@ -60,25 +71,24 @@ def update_next_nodes_stage3(state, bomb_positions, stage3_adj, exploded_node, s
     cand = get_candidates(reset_center, 3, bomb_positions, stage3_adj)
     if cand:
         state["target_node"] = choose_next_target_common(
-            reset_center, 3, bomb_positions, stage3_adj, cand)
+            reset_center, 3, bomb_positions, stage3_adj, cand
+        )
     else:
-        print("   ⚠ 리셋 중심에서도 타깃 없음 → 자기 자신")
         state["target_node"] = reset_center
 
     print(f"   🔁 리셋 중심 = {reset_center}")
     print(f"   🎯 타깃 = {state['target_node']}")
-    return
-
 
 
 # ----------------------------------------------------------
-# Stage3 새 라운드
+# Stage3 새 라운드 시작
 # ----------------------------------------------------------
 def start_new_round_stage3(state, bomb_positions, stage3_adj, source3):
 
     print_round_header("새 라운드 시작 (Stage 3)")
 
-    state["mouse_locked_inside"] = True   # 🔒 라운드 시작 즉시 잠금
+    # 초기화
+    state["mouse_locked_inside"] = True
     state["red_start_time"] = None
     state["cursor_out_time"] = None
     state["cursor_out_recorded"] = False
@@ -86,8 +96,7 @@ def start_new_round_stage3(state, bomb_positions, stage3_adj, source3):
     state["click_time"] = None
     state["logged_after_explosion"] = False
 
-
-
+    # 펄스 초기화
     state["pulse_phase"] = 1
     state["pulse_delay"] = 2.0
     state["pulse_count"] = 0
@@ -99,7 +108,8 @@ def start_new_round_stage3(state, bomb_positions, stage3_adj, source3):
     cand = get_candidates(source3, 3, bomb_positions, stage3_adj)
     if cand:
         state["target_node"] = choose_next_target_common(
-            source3, 3, bomb_positions, stage3_adj, cand)
+            source3, 3, bomb_positions, stage3_adj, cand
+        )
     else:
         state["target_node"] = source3
 
@@ -108,27 +118,21 @@ def start_new_round_stage3(state, bomb_positions, stage3_adj, source3):
 
 
 # ----------------------------------------------------------
-# Stage3 폭발
+# Stage3 폭발 처리
 # ----------------------------------------------------------
 def explode_stage3(state, node, bomb_positions, stage3_adj, source3):
 
-    # 🔥 현재 라운드 번호 백업 (late-click 용)
     state["trial_at_explosion"] = state["round_count"]
-
-    # 🔥 폭발 시간 기록
     state["explode_time"] = utc_now()
 
     print_round_header("EXPLODE 처리 (Stage 3)", node)
 
-    # 이펙트
     state["fuse_burning"] = False
     state["segment_progress"] = 0
     state["explosion_timer"] = 0.6
     state["explosion_pos"] = bomb_positions[node]
-
     state["mouse_locked_inside"] = False
 
-    # 중심/타깃 갱신
     update_next_nodes_stage3(state, bomb_positions, stage3_adj, node, source3)
 
     if state["target_node"] is None:
@@ -138,47 +142,49 @@ def explode_stage3(state, node, bomb_positions, stage3_adj, source3):
     state["fail_count"] += 1
     state["round_count"] += 1
 
-    # ⭐⭐⭐ 반드시 초기화해야 late-click이 기록됨!
+    # ⭐ 기록 정상화를 위한 초기화
     state["click_time"] = None
     state["cursor_out_recorded"] = False
     state["logged_after_explosion"] = False
 
     print(f"   ➕ round = {state['round_count']} / MAX = {state['MAX_ROUNDS']}")
 
-    # 종료 조건
+    # Stage 종료 검사
     if state["round_count"] >= state["MAX_ROUNDS"]:
         print("   🚀 Stage 종료 준비...")
         state["pending_stage_change"] = True
         return
 
-    # 다음 라운드 준비
+    # 다음 pulse 준비
     state["pulse_phase"] = 1
     state["pulse_delay"] = 2.0
     state["pulse_count"] = 0
 
 
 # ----------------------------------------------------------
-# Stage3 성공
+# Stage3 성공 처리
 # ----------------------------------------------------------
 def handle_defuse_success_stage3(state, bomb_positions, stage3_adj, node, source3):
+
     state["click_time"] = utc_now()
 
-    # 여기서 로그 한 줄 기록
+    # 🔥 로그 기록 — 최신 조건 반영
     write_log(
         state["log_file"],
-        N=6,                          # Stage1 → 연결 3개
-        trial=state["round_count"],   # 현재 라운드
-        W=W,
-        A=A,                
+        N=6,                          # Stage3 = 연결 6개
+        trial=state["round_count"],
+        W=get_W(),
+        A=get_A(),
         red_start_time=state.get("red_start_time",""),
         cursor_out_time=state.get("cursor_out_time",""),
-        explode_time="",              # 성공했으므로 없음
+        explode_time="",
         click_time=state["click_time"],
         success=1
     )
 
     print_round_header("DEFUSE SUCCESS (Stage 3)", node)
 
+    # 이펙트
     state["fuse_burning"] = False
     state["segment_progress"] = 0
     state["success_timer"] = 0.6
@@ -191,20 +197,23 @@ def handle_defuse_success_stage3(state, bomb_positions, stage3_adj, node, source
     if state["target_node"] is None:
         state["target_node"] = state["current_source"]
 
+    # 라운드 증가
     state["round_count"] += 1
     state["success_count"] += 1
 
-    #로그 초기화
+    # 초기화
     state["cursor_out_time"] = None
     state["cursor_out_recorded"] = False
 
     print(f"   ➕ round = {state['round_count']} / MAX = {state['MAX_ROUNDS']}")
 
+    # Stage 종료 검사
     if state["round_count"] >= state["MAX_ROUNDS"]:
         print("   🚀 Stage 종료 준비...")
         state["pending_stage_change"] = True
         return
 
+    # 다음 pulse
     state["pulse_phase"] = 1
     state["pulse_delay"] = 2.0
     state["pulse_count"] = 0

@@ -1,7 +1,7 @@
 # ==========================================================
 # stage3.py — Stage1과 동일한 거리, Odd-r Hex 6방향 연결
 # ==========================================================
-from settings import BOMB_DISTANCE,BOMB_RADIUS
+import settings    # ★ 중요: 필요할 때 직접 settings에서 읽어온다
 import math
 
 _stage3_adj = {}
@@ -12,15 +12,15 @@ stage3_connections = []
 # Odd-r HEX 방향 (열 기준으로 오프셋이 달라짐)
 # ----------------------------------------------------------
 EVEN_COL_DIRS = [
-    (-1, 0), (1, 0),      # 위, 아래
-    (0, -1), (0, 1),      # 좌, 우
-    (-1, -1), (-1, 1)     # 대각 위-left, 위-right
+    (-1, 0), (1, 0),
+    (0, -1), (0, 1),
+    (-1, -1), (-1, 1)
 ]
 
 ODD_COL_DIRS = [
     (-1, 0), (1, 0),
     (0, -1), (0, 1),
-    (1, -1), (1, 1)       # 대각 아래-left, 아래-right
+    (1, -1), (1, 1)
 ]
 
 
@@ -31,18 +31,22 @@ def generate_stage3_positions(width, height):
     global _stage3_adj, stage3_connections
 
     positions = {}
-    A = BOMB_DISTANCE  # 네가 설정한 실험용 A
-    center_distance = A + (2 * BOMB_RADIUS)
+
+    # ★ 항상 최신 값 읽기
+    A = settings.BOMB_DISTANCE
+    R = settings.BOMB_RADIUS
+
+    center_distance = A + (2 * R)
     spacing = center_distance
+
     rows, cols = 4, 5
 
-    dx = spacing * math.sqrt(3) / 2   # 121.24
-    dy = spacing / 2                  # 70
+    dx = spacing * math.sqrt(3) / 2
+    dy = spacing / 2
 
     start_x = width // 2
     start_y = height // 2
 
-    # 배치
     for c in range(cols):
         for r in range(rows):
             x = start_x + (c - cols//2) * dx
@@ -50,7 +54,7 @@ def generate_stage3_positions(width, height):
             positions[(r, c)] = (x, y)
 
     # ------------------------------------------------------
-    # Adjacency (Odd-r Hex 정석)
+    # Adjacency (Odd-r HEX)
     # ------------------------------------------------------
     adj = {node: [] for node in positions}
 

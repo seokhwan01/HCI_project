@@ -3,7 +3,8 @@ import math
 from logic.stage1_logic import handle_defuse_success_stage1
 from logic.stage2_logic import handle_defuse_success_stage2
 from logic.stage3_logic import handle_defuse_success_stage3
-from settings import MOUSE_LOCK_ON_START,BOMB_RADIUS
+import settings
+from settings import MOUSE_LOCK_ON_START
 
 
 def safe_hit(rect, pos):
@@ -94,7 +95,7 @@ def handle_events(e, state, stage, bomb_positions,
             mx, my = e.pos
             tx, ty = bomb_positions[state["target_node"]]
 
-            if math.hypot(mx - tx, my - ty) <=BOMB_RADIUS:
+            if math.hypot(mx - tx, my - ty) <=settings.BOMB_RADIUS:
 
                 # -------------------------
                 # Stage 1 성공 처리

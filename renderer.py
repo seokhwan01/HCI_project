@@ -6,7 +6,7 @@ from settings import PULSE_SPEED, BOMB_DISTANCE,TARGET_EXPLODE_TIME
 from logic.stage1_logic import explode_stage1
 from logic.stage2_logic import explode_stage2
 from logic.stage3_logic import explode_stage3
-
+import settings
 _last_render_source = None
 _printed_fuse_distances = set()
 _last_logged_round = None
@@ -145,51 +145,29 @@ def render_game(screen, background_img, stage, bomb_positions,
             else:
                 explode_stage3(state, node, bomb_positions, adj, center_node)
 
-    # if state["fuse_burning"] and state["target_node"] in bomb_positions:
-
-    #     src = bomb_positions[state["current_source"]]
-    #     dst = bomb_positions[state["target_node"]]
-
-    #     draw_fuse(screen, src, dst, progress=state["segment_progress"], active=True)
-        
-    #     #setting에서 W if문
-    #     if BOMB_DISTANCE==150:
-    #         state["segment_progress"] += dt * (FUSE_SPEED_150* 0.15)
-    #     elif BOMB_DISTANCE==100:
-    #         state["segment_progress"] += dt * (FUSE_SPEED_100 * 0.15)
-        
-
-    #     if state["segment_progress"] >= 1:
-
-    #         node = state["target_node"]
-
-    #         if stage == 1:
-    #             explode_stage1(state, node, bomb_positions, adj, center_node)
-
-    #         elif stage == 2:
-    #             explode_stage2(state, node, bomb_positions, adj, center_node)
-
-    #         else:
-    #             explode_stage3(state, node, bomb_positions, adj, center_node)
-
+   
     # ---------------------------
     # 4) 폭탄 렌더링
     # ---------------------------
     for node, pos in bomb_positions.items():
 
-        # 🔥 stage2뿐 아니라 stage3도 neighbor_func 사용
+        # stage2/3 neighbor_func 처리
         if neighbor_func is not None:
             active = [state["current_source"]] + list(neighbor_func(state["current_source"], bomb_positions))
         else:
             active = [state["current_source"]] + adj.get(state["current_source"], [])
 
-
         dim = node not in active
         burning = state["fuse_burning"] and node == state["target_node"]
 
-        img = red_bomb if burning else black_bomb
+        # 🔥 BOMB_RADIUS → size 반영
+        bomb_size = settings.BOMB_RADIUS * 2
+        img_raw = red_bomb if burning else black_bomb
+        img = pygame.transform.scale(img_raw, (bomb_size, bomb_size))
+
         img.set_alpha(100 if dim else 255)
         screen.blit(img, img.get_rect(center=pos))
+
 
     # ---------------------------
     # 5) 폭발 이미지

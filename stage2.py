@@ -2,21 +2,23 @@
 # stage2.py — Stage2 전용: 5×5 격자 + 십자형(4방향) 연결
 # ==========================================================
 
-from settings import WIDTH, HEIGHT, BOMB_DISTANCE, BOMB_RADIUS
+import settings   # ★ 가장 중요! 항상 최신 값 사용
 
 # ----------------------------------------------------------
 # 5×5 정중앙 격자 배치 생성
 # ----------------------------------------------------------
 def generate_stage2_positions():
 
-    A = BOMB_DISTANCE  # 네가 설정한 실험용 A
-    center_distance = A + (2 * BOMB_RADIUS)
+    A = settings.BOMB_DISTANCE
+    R = settings.BOMB_RADIUS
+
+    center_distance = A + (2 * R)
     spacing = center_distance
+
     rows, cols = 4, 5
 
-    # 화면 정중앙을 기준으로 (2,2)가 중심이 되도록 배치
-    origin_x = WIDTH // 2 - spacing * 2
-    origin_y = HEIGHT // 2 - spacing * 2
+    origin_x = settings.WIDTH // 2 - spacing * 2
+    origin_y = settings.HEIGHT // 2 - spacing * 2
 
     positions = {}
 
@@ -36,7 +38,6 @@ def adjacent_nodes_stage2(node, bomb_positions):
 
     r, c = node
 
-    # 상하좌우 4개 방향만 사용
     cross_offsets = [
         (-1, 0),  # 위
         (1, 0),   # 아래

@@ -1,41 +1,41 @@
 # ==========================================================
-# stage1.py — adjacency 유지 + 도화선 거리 정확히 spacing
+# stage1.py — settings 값 자동 반영 버전
 # ==========================================================
-from settings import BOMB_DISTANCE,BOMB_RADIUS
 import math
+import settings   # ★ settings 전체 import (중요!)
 
 stage1_connections = []
 _stage1_adj = {}
-
 
 def generate_stage1_positions(WIDTH, HEIGHT):
     global stage1_connections, _stage1_adj
 
     positions = {}
-    # spacing = BOMB_DISTANCE  # 140
-    A = BOMB_DISTANCE  # 네가 설정한 실험용 A
-    center_distance = A + (2 * BOMB_RADIUS)
-    spacing = center_distance
+
+    # ★ apply_condition()이 settings 값을 바꾸면 즉시 반영됨
+    A = settings.BOMB_DISTANCE
+    R = settings.BOMB_RADIUS
+
+    # 표면 간 거리 A → 중심 간 거리 = A + 2R
+    spacing = A + (2 * R)
+
     rows = 4
     cols = 5
 
     # 정삼각형 기반 spacing
-    dx = spacing * math.sqrt(3) / 2   # 121.24 px
-    dy = spacing / 2                  # 70 px
+    dx = spacing * math.sqrt(3) / 2
+    dy = spacing / 2
 
     start_x = WIDTH // 2
     start_y = HEIGHT // 2
 
     for c in range(cols):
         for r in range(rows):
-
-            # 시각적 형태는 유지되지만 대각선 길이를 맞춘 형태
             x = start_x + (c - cols//2) * dx
             y = start_y + (r - rows//2) * spacing + (c % 2) * dy
-
             positions[(r, c)] = (x, y)
 
-    # === adjacency (너의 원래 로직 그대로) ===
+    # adjacency 그대로 유지
     adj = {node: [] for node in positions}
 
     for (r, c) in positions:
@@ -59,7 +59,6 @@ def generate_stage1_positions(WIDTH, HEIGHT):
                 stage1_connections.append((a, b))
 
     return positions
-
 
 
 def adjacent_nodes_stage1(node, bomb_positions):
